@@ -1,48 +1,61 @@
 import 'package:flutter/material.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: MaximumBid(),
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false, // removes debug banner
+      home: MaximumBidPage(),
     );
   }
 }
 
-class MaximumBid extends StatefulWidget {
+class MaximumBidPage extends StatefulWidget {
+  const MaximumBidPage({super.key});
+
   @override
-  _MaximumBidState createState() => _MaximumBidState();
+  State<MaximumBidPage> createState() => _MaximumBidPageState();
 }
 
-class _MaximumBidState extends State<MaximumBid> {
-  int bidAmount = 0;
+class _MaximumBidPageState extends State<MaximumBidPage> {
+  int _bidAmount = 0; // starting bid
 
-  void increaseBid() {
+  void _increaseBid() {
     setState(() {
-      bidAmount = bidAmount + 50; // Increase by 50
+      _bidAmount = _bidAmount + 50; // increase bid by 50
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Bidding Page")),
+      appBar: AppBar(
+        title: const Text("Bidding Page"),
+        backgroundColor: Colors.deepPurple,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              "Current Bid: \$${bidAmount}",
-              style: TextStyle(fontSize: 20),
+              "Current Maximum Bid:",
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 10),
+            Text(
+              "\$$_bidAmount",
+              style: TextStyle(fontSize: 28, color: Colors.green, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: increaseBid,
-              child: Text("Increase Bid"),
+              onPressed: _increaseBid,
+              child: const Text("Increase Bid by \$50"),
             ),
           ],
         ),
