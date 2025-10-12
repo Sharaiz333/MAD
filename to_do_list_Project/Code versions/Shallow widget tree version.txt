@@ -1,0 +1,263 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+// 🎨 Root App
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Animated To-Do List',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        useMaterial3: true,
+      ),
+      home: ToDoListPage(),
+    );
+  }
+}
+
+// 🏠 Main Page
+class ToDoListPage extends StatefulWidget {
+  @override
+  State<ToDoListPage> createState() => _ToDoListPageState();
+}
+
+class _ToDoListPageState extends State<ToDoListPage>
+    with SingleTickerProviderStateMixin {
+  final TextEditingController taskController = TextEditingController();
+  List<String> tasks = [];
+  bool _showList = true;
+  double _opacity = 1.0;
+  late AnimationController _animationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 1));
+  }
+
+  void addTask() {
+    if (taskController.text.isNotEmpty) {
+      setState(() {
+        tasks.add(taskController.text);
+        taskController.clear();
+        _opacity = 0.0;
+      });
+      Future.delayed(const Duration(milliseconds: 200), () {
+        setState(() => _opacity = 1.0);
+      });
+    }
+  }
+
+  void deleteTask(int index) {
+    setState(() => tasks.removeAt(index));
+    _animationController.forward(from: 0);
+  }
+
+  void toggleView() {
+    setState(() => _showList = !_showList);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('✨ Animated To-Do List ✨'),
+        centerTitle: true,
+        backgroundColor: Colors.purple,
+        foregroundColor: Colors.white,
+      ),
+      body: Container(
+        // 🌈 Gradient Background
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFB993D6), Color(0xFF8CA6DB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: AnimatedCrossFade(
+          duration: const Duration(milliseconds: 600),
+          crossFadeState:
+              _showList ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          firstChild: tasks.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No tasks yet. Add one!',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    return TaskTile(
+                      taskText: tasks[index],
+                      opacity: _opacity,
+                      onDelete: () => deleteTask(index),
+                    );
+                  },
+                ),
+          secondChild: const Center(
+            child: Text(
+              'List Hidden 👀',
+              style: TextStyle(fontSize: 20, color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'toggle',
+            mini: true,
+            backgroundColor: Colors.deepPurpleAccent,
+            onPressed: toggleView,
+            child: const Icon(Icons.visibility),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'add',
+            backgroundColor: Colors.pinkAccent,
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => AddTaskDialog(
+                controller: taskController,
+                onAdd: () {
+                  addTask();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 🧱 Task Tile Widget
+class TaskTile extends StatefulWidget {
+  final String taskText;
+  final double opacity;
+  final VoidCallback onDelete;
+
+  const TaskTile({
+    required this.taskText,
+    required this.opacity,
+    required this.onDelete,
+    super.key,
+  });
+
+  @override
+  State<TaskTile> createState() => _TaskTileState();
+}
+
+class _TaskTileState extends State<TaskTile> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: widget.opacity,
+      duration: const Duration(milliseconds: 500),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        height: _isExpanded ? 120 : 80,
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.purpleAccent, Colors.deepPurple],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 6,
+              offset: Offset(2, 3),
+            ),
+          ],
+        ),
+        child: ListTile(
+          title: Text(
+            widget.taskText,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.white,
+                ),
+                onPressed: () =>
+                    setState(() => _isExpanded = !_isExpanded),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                onPressed: widget.onDelete,
+              ),
+            ],
+          ),
+          subtitle: _isExpanded
+              ? const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    'This is an animated task tile!',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+}
+
+// 💬 Add Task Dialog Widget
+class AddTaskDialog extends StatelessWidget {
+  final TextEditingController controller;
+  final VoidCallback onAdd;
+
+  const AddTaskDialog({
+    required this.controller,
+    required this.onAdd,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.purple[50],
+      title: const Text('Add New Task'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(hintText: 'Enter task name'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: onAdd,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.purple,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
