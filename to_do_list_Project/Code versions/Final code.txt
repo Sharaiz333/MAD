@@ -1,0 +1,426 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+// 🎨 Root App
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Animated To-Do List',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.deepPurple,
+        useMaterial3: true,
+      ),
+      home: ToDoListPage(),
+    );
+  }
+}
+
+// 📋 Model for Task
+class Task {
+  String title;
+  String description;
+  bool isDone;
+  Task({
+    required this.title,
+    required this.description,
+    this.isDone = false,
+  });
+}
+
+// 🏠 Main Page
+class ToDoListPage extends StatefulWidget {
+  @override
+  State<ToDoListPage> createState() => _ToDoListPageState();
+}
+
+class _ToDoListPageState extends State<ToDoListPage> {
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController descController = TextEditingController();
+
+  List<Task> tasks = [];
+  bool _showList = true;
+  double _opacity = 1.0;
+
+  void addTask() {
+    if (titleController.text.isNotEmpty) {
+      setState(() {
+        tasks.add(Task(
+          title: titleController.text,
+          description: descController.text,
+        ));
+        titleController.clear();
+        descController.clear();
+        _opacity = 0.0;
+      });
+      Future.delayed(const Duration(milliseconds: 200), () {
+        setState(() => _opacity = 1.0);
+      });
+    }
+  }
+
+  void editTask(int index, String newTitle, String newDesc) {
+    setState(() {
+      tasks[index].title = newTitle;
+      tasks[index].description = newDesc;
+    });
+  }
+
+  void deleteTask(int index) {
+    setState(() => tasks.removeAt(index));
+  }
+
+  void toggleDone(int index, bool? value) {
+    setState(() {
+      tasks[index].isDone = value ?? false;
+    });
+  }
+
+  void toggleView() {
+    setState(() => _showList = !_showList);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('✨ Animated To-Do List ✨'),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF7F00FF), Color(0xFFE100FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: AnimatedCrossFade(
+                  duration: const Duration(milliseconds: 600),
+                  crossFadeState: _showList
+                      ? CrossFadeState.showFirst
+                      : CrossFadeState.showSecond,
+                  firstChild: tasks.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No tasks yet. Add one!',
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 18),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: tasks.length,
+                          itemBuilder: (context, index) {
+                            return TaskTile(
+                              task: tasks[index],
+                              opacity: _opacity,
+                              onDelete: () => deleteTask(index),
+                              onEdit: (newTitle, newDesc) =>
+                                  editTask(index, newTitle, newDesc),
+                              onToggleDone: (value) =>
+                                  toggleDone(index, value),
+                            );
+                          },
+                        ),
+                  secondChild: const Center(
+                    child: Text(
+                      'List Hidden 👀',
+                      style: TextStyle(fontSize: 20, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+              // 🏫 Footer Section
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10),
+                child: Column(
+                  children: const [
+                    Divider(color: Colors.white54, thickness: 1),
+                    SizedBox(height: 6),
+                    Text(
+                      'Riphah International University',
+                      style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14),
+                    ),
+                    Text(
+                      'Developed by Sharaiz Ahmed | SAP ID: 57288',
+                      style: TextStyle(
+                          color: Colors.white60,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'toggle',
+            mini: true,
+            backgroundColor: Colors.pinkAccent,
+            onPressed: toggleView,
+            child: const Icon(Icons.visibility),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'add',
+            backgroundColor: Colors.deepPurpleAccent,
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => AddTaskDialog(
+                titleController: titleController,
+                descController: descController,
+                onAdd: () {
+                  addTask();
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+            child: const Icon(Icons.add),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 🧱 Task Tile Widget
+class TaskTile extends StatefulWidget {
+  final Task task;
+  final double opacity;
+  final VoidCallback onDelete;
+  final Function(String, String) onEdit;
+  final Function(bool?) onToggleDone;
+
+  const TaskTile({
+    required this.task,
+    required this.opacity,
+    required this.onDelete,
+    required this.onEdit,
+    required this.onToggleDone,
+    super.key,
+  });
+
+  @override
+  State<TaskTile> createState() => _TaskTileState();
+}
+
+class _TaskTileState extends State<TaskTile> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: widget.opacity,
+      duration: const Duration(milliseconds: 500),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+        height: _isExpanded ? 150 : 80,
+        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: widget.task.isDone
+                ? [Colors.greenAccent, Colors.green]
+                : [Color(0xFF9C27B0), Color(0xFFE040FB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 6,
+              offset: Offset(2, 3),
+            ),
+          ],
+        ),
+        child: ListTile(
+          leading: Checkbox(
+            value: widget.task.isDone,
+            activeColor: Colors.white,
+            checkColor: Colors.deepPurple,
+            onChanged: widget.onToggleDone,
+          ),
+          title: Text(
+            widget.task.title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              decoration: widget.task.isDone
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none,
+            ),
+          ),
+          subtitle: _isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    widget.task.description.isNotEmpty
+                        ? widget.task.description
+                        : 'No description added',
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                )
+              : null,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => EditTaskDialog(
+                      initialTitle: widget.task.title,
+                      initialDesc: widget.task.description,
+                      onSave: (newTitle, newDesc) {
+                        widget.onEdit(newTitle, newDesc);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.white,
+                ),
+                onPressed: () => setState(() => _isExpanded = !_isExpanded),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.redAccent),
+                onPressed: widget.onDelete,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 💬 Add Task Dialog
+class AddTaskDialog extends StatelessWidget {
+  final TextEditingController titleController;
+  final TextEditingController descController;
+  final VoidCallback onAdd;
+
+  const AddTaskDialog({
+    required this.titleController,
+    required this.descController,
+    required this.onAdd,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.deepPurple[50],
+      title: const Text('Add New Task'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: titleController,
+            decoration: const InputDecoration(hintText: 'Enter task title'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: descController,
+            decoration: const InputDecoration(hintText: 'Enter description'),
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: onAdd,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
+
+// ✏️ Edit Task Dialog
+class EditTaskDialog extends StatelessWidget {
+  final String initialTitle;
+  final String initialDesc;
+  final Function(String, String) onSave;
+
+  const EditTaskDialog({
+    required this.initialTitle,
+    required this.initialDesc,
+    required this.onSave,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final titleController = TextEditingController(text: initialTitle);
+    final descController = TextEditingController(text: initialDesc);
+
+    return AlertDialog(
+      backgroundColor: Colors.deepPurple[50],
+      title: const Text('Edit Task'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: titleController,
+            decoration: const InputDecoration(hintText: 'Edit title'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: descController,
+            decoration: const InputDecoration(hintText: 'Edit description'),
+            maxLines: 2,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () =>
+              onSave(titleController.text, descController.text),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}

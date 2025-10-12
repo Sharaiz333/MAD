@@ -1,0 +1,121 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(MyApp());
+}
+
+// Root widget
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Simple To-Do List',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: ToDoListPage(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+// To-Do List Page
+class ToDoListPage extends StatefulWidget {
+  @override
+  _ToDoListPageState createState() => _ToDoListPageState();
+}
+
+class _ToDoListPageState extends State<ToDoListPage> {
+  // List of tasks
+  List<String> tasks = [];
+
+  // Controller for text input
+  final TextEditingController taskController = TextEditingController();
+
+  // Function to add a new task
+  void addTask() {
+    if (taskController.text.isNotEmpty) {
+      setState(() {
+        tasks.add(taskController.text);
+        taskController.clear();
+      });
+    }
+  }
+
+  // Function to delete a task
+  void deleteTask(int index) {
+    setState(() {
+      tasks.removeAt(index);
+    });
+  }
+
+  // Function to show the dialog for adding a task
+  void showAddTaskDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Add New Task'),
+          content: TextField(
+            controller: taskController,
+            decoration: InputDecoration(
+              hintText: 'Enter your task',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                addTask();
+                Navigator.pop(context); // Close dialog
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Main UI
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('My To-Do List'),
+        centerTitle: true,
+      ),
+      body: tasks.isEmpty
+          ? Center(
+              child: Text(
+                'No tasks yet. Add one!',
+                style: TextStyle(fontSize: 18, color: Colors.grey),
+              ),
+            )
+          : ListView.builder(
+              itemCount: tasks.length,
+              itemBuilder: (context, index) {
+                return Card(
+                  margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: ListTile(
+                    title: Text(tasks[index]),
+                    trailing: IconButton(
+                      icon: Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => deleteTask(index),
+                    ),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: showAddTaskDialog,
+        child: Icon(Icons.add),
+      ),
+    );
+  }
+}
