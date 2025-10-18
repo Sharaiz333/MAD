@@ -17,19 +17,23 @@ class HomePage extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top content
-              HomeColumnWidget(),
-
-              // Bottom footer
-              homePadding(),
-            ],
-          ),
+          child: buildColumn2(),
         ),
       ),
     );
+  }
+
+  Column buildColumn2() {
+    return Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Top content
+            HomeColumnWidget(),
+
+            // Bottom footer
+            homePadding(),
+          ],
+        );
   }
 
   Padding homePadding() {
