@@ -8,8 +8,14 @@ class Flashcard {
   String question;
   String answer;
   bool showAnswer;
+  bool learned;
 
-  Flashcard({required this.question, required this.answer, this.showAnswer = false});
+  Flashcard({
+    required this.question,
+    required this.answer,
+    this.showAnswer = false,
+    this.learned = false,
+  });
 }
 
 class FlashcardApp extends StatefulWidget {
@@ -30,7 +36,7 @@ class _FlashcardAppState extends State<FlashcardApp> {
     Flashcard(question: "What is hot reload?", answer: "A feature to update UI instantly."),
   ];
 
-  int learnedCount = 0;
+  int get learnedCount => flashcards.where((c) => c.learned).length;
 
   Future<void> _refreshList() async {
     await Future.delayed(const Duration(seconds: 1));
@@ -42,7 +48,6 @@ class _FlashcardAppState extends State<FlashcardApp> {
         Flashcard(question: "What is a StatefulWidget?", answer: "A widget that can change over time."),
         Flashcard(question: "What is MaterialApp?", answer: "The root widget for a Material Design app."),
       ];
-      learnedCount = 0;
     });
   }
 
@@ -58,7 +63,6 @@ class _FlashcardAppState extends State<FlashcardApp> {
   void _removeFlashcard(int index) {
     final removedItem = flashcards[index];
     flashcards.removeAt(index);
-    learnedCount++;
     _listKey.currentState!.removeItem(
       index,
           (context, animation) => SizeTransition(
@@ -89,6 +93,12 @@ class _FlashcardAppState extends State<FlashcardApp> {
                 onPressed: () {
                   setState(() {
                     card.showAnswer = !card.showAnswer;
+                    // Mark as learned when answer is revealed
+                    if (card.showAnswer) {
+                      card.learned = true;
+                    } else {
+                      card.learned = false;
+                    }
                   });
                 },
               ),
