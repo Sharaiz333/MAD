@@ -7,9 +7,9 @@ void main() {
 class Flashcard {
   String question;
   String answer;
-  bool learned;
+  bool showAnswer;
 
-  Flashcard({required this.question, required this.answer, this.learned = false});
+  Flashcard({required this.question, required this.answer, this.showAnswer = false});
 }
 
 class FlashcardApp extends StatefulWidget {
@@ -21,10 +21,13 @@ class FlashcardApp extends StatefulWidget {
 
 class _FlashcardAppState extends State<FlashcardApp> {
   final GlobalKey<AnimatedListState> _listKey = GlobalKey<AnimatedListState>();
+
   List<Flashcard> flashcards = [
-    Flashcard(question: "What is Flutter?", answer: "A UI toolkit by Google."),
-    Flashcard(question: "What language is used in Flutter?", answer: "Dart."),
-    Flashcard(question: "What is a widget?", answer: "A building block of Flutter UI."),
+    Flashcard(question: "What is Flutter?", answer: "A framework to build cross-platform apps."),
+    Flashcard(question: "Who developed Flutter?", answer: "Google."),
+    Flashcard(question: "What language does Flutter use?", answer: "Dart."),
+    Flashcard(question: "What is a widget in Flutter?", answer: "A building block of the UI."),
+    Flashcard(question: "What is hot reload?", answer: "A feature to update UI instantly."),
   ];
 
   int learnedCount = 0;
@@ -33,9 +36,11 @@ class _FlashcardAppState extends State<FlashcardApp> {
     await Future.delayed(const Duration(seconds: 1));
     setState(() {
       flashcards = [
-        Flashcard(question: "What is hot reload?", answer: "Quickly updates UI changes."),
-        Flashcard(question: "What is a StatefulWidget?", answer: "Widget that maintains state."),
-        Flashcard(question: "What is a StatelessWidget?", answer: "Widget with no state."),
+        Flashcard(question: "What is setState() used for?", answer: "To update the UI in StatefulWidgets."),
+        Flashcard(question: "What does Scaffold do?", answer: "Provides basic layout structure."),
+        Flashcard(question: "What is a StatelessWidget?", answer: "A widget without any state."),
+        Flashcard(question: "What is a StatefulWidget?", answer: "A widget that can change over time."),
+        Flashcard(question: "What is MaterialApp?", answer: "The root widget for a Material Design app."),
       ];
       learnedCount = 0;
     });
@@ -43,8 +48,9 @@ class _FlashcardAppState extends State<FlashcardApp> {
 
   void _addFlashcard() {
     final newCard = Flashcard(
-        question: "New Question ${flashcards.length + 1}",
-        answer: "New Answer ${flashcards.length + 1}");
+      question: "New Question ${flashcards.length + 1}",
+      answer: "New Answer ${flashcards.length + 1}",
+    );
     flashcards.insert(0, newCard);
     _listKey.currentState!.insertItem(0);
   }
@@ -63,31 +69,39 @@ class _FlashcardAppState extends State<FlashcardApp> {
   }
 
   Widget _buildCard(Flashcard card, int index) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          card.learned = !card.learned;
-        });
-      },
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Text(
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            ListTile(
+              title: Text(
                 card.question,
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
-              if (card.learned)
-                Text(card.answer,
-                    style: const TextStyle(fontSize: 16, color: Colors.grey))
-              else
-                const Text("(Tap to reveal answer)",
-                    style: TextStyle(color: Colors.grey)),
-            ],
-          ),
+              trailing: IconButton(
+                icon: Icon(
+                  card.showAnswer ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: Colors.blue,
+                  size: 28,
+                ),
+                onPressed: () {
+                  setState(() {
+                    card.showAnswer = !card.showAnswer;
+                  });
+                },
+              ),
+            ),
+            if (card.showAnswer)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0, left: 16, right: 16),
+                child: Text(
+                  card.answer,
+                  style: const TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+              ),
+          ],
         ),
       ),
     );
