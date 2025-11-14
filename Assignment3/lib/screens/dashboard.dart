@@ -1,124 +1,113 @@
 import 'package:flutter/material.dart';
 import '../models/device.dart';
 import '../widgets/device_card.dart';
-import '../widgets/section_title.dart';
+import 'add_device.dart';
+import 'device_detail.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<Device> devices = [
-    Device(name: "Living Room Light", icon: "💡"),
-    Device(name: "Air Conditioner", icon: "❄️"),
-    Device(name: "Smart TV", icon: "📺"),
-    Device(name: "Heater", icon: "🔥"),
+class _DashboardScreenState extends State<DashboardScreen> {
+  final List<Device> _devices = [
+    Device(id: 'd1', name: 'Living Room Light', type: 'Light', room: 'Living'),
+    Device(id: 'd2', name: 'Bedroom Fan', type: 'Fan', room: 'Bedroom'),
+    Device(id: 'd3', name: 'Window AC', type: 'AC', room: 'Bedroom'),
+    Device(id: 'd4', name: 'Front Door Camera', type: 'Camera', room: 'Entrance'),
   ];
+
+  void _addDevice(Device device) {
+    setState(() => _devices.add(device));
+  }
+
+  void _toggleDevice(String id, bool value) {
+    setState(() {
+      final d = _devices.firstWhere((e) => e.id == id);
+      d.isOn = value;
+    });
+  }
+
+  void _updateLevel(String id, double newLevel) {
+    setState(() {
+      final d = _devices.firstWhere((e) => e.id == id);
+      d.level = newLevel;
+    });
+  }
+
+  void _removeDevice(String id) {
+    setState(() => _devices.removeWhere((d) => d.id == id));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final crossAxis = width > 600 ? 4 : 2;
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          const SliverSafeArea(
-            sliver: SliverAppBar(
-              pinned: true,
-              floating: true,
-              expandedHeight: 120,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text("Smart Home Dashboard"),
-              ),
+      appBar: AppBar(
+        leading: IconButton(onPressed: () {}, icon: const Icon(Icons.menu)),
+        title: const Text('Smart Home Dashboard made by Sharaiz Ahmed [57288]'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: CircleAvatar(
+              backgroundImage: AssetImage('assets/picture.jpg'),
+              radius: 28,
             ),
-          ),
-
-          // Sliver List (ListView)
-          SliverList(
-            delegate: SliverChildListDelegate(
-              [
-                const SectionTitle(title: "Your Devices (ListView + ListTile)"),
-
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: devices.length,
-                  itemBuilder: (context, index) {
-                    final device = devices[index];
-                    return Dismissible(
-                      key: ValueKey(device.name),
-                      background: Container(color: Colors.red),
-                      onDismissed: (_) {
-                        setState(() {
-                          devices.removeAt(index);
-                        });
-                      },
-                      child: Card(
-                        child: ListTile(
-                          leading: Text(device.icon, style: const TextStyle(fontSize: 24)),
-                          title: Text(device.name),
-                          subtitle: Text(device.isOn ? "ON" : "OFF"),
-                          trailing: Switch(
-                            value: device.isOn,
-                            onChanged: (value) {
-                              setState(() {
-                                device.isOn = value;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                const SectionTitle(title: "GridView.count"),
-                GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 2,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: devices.map((d) => DeviceCard(device: d)).toList(),
-                ),
-
-                const SectionTitle(title: "GridView.extent"),
-                GridView.extent(
-                  shrinkWrap: true,
-                  maxCrossAxisExtent: 200,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: devices.map((d) => DeviceCard(device: d)).toList(),
-                ),
-
-                const SectionTitle(title: "GridView.builder"),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: devices.length,
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
-                  itemBuilder: (context, index) {
-                    return DeviceCard(device: devices[index]);
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // Sliver Grid
-          const SliverPadding(
-            padding: EdgeInsets.all(10),
-            sliver: SliverGrid(
-              delegate: SliverChildListDelegate.fixed([
-                Card(child: Center(child: Text("Sliver Grid Item 1"))),
-                Card(child: Center(child: Text("Sliver Grid Item 2"))),
-                Card(child: Center(child: Text("Sliver Grid Item 3"))),
-                Card(child: Center(child: Text("Sliver Grid Item 4"))),
-              ]),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2),
-            ),
-          ),
+          )
         ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: GridView.builder(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxis,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.95,
+          ),
+          itemCount: _devices.length,
+          itemBuilder: (context, index) {
+            final device = _devices[index];
+            return Dismissible(
+              key: Key(device.id),
+              background: Container(color: Colors.redAccent, child: const Center(child: Text('Delete', style: TextStyle(color: Colors.white)))),
+              onDismissed: (_) => _removeDevice(device.id),
+              child: DeviceCard(
+                device: device,
+                onToggle: (v) => _toggleDevice(device.id, v),
+                onTap: () async {
+                  final result = await Navigator.push<Device?>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DeviceDetailScreen(
+                        device: device,
+                        onLevelChanged: (val) => _updateLevel(device.id, val),
+                        onPowerChanged: (val) => _toggleDevice(device.id, val),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () async {
+          final newDevice = await Navigator.push<Device?>(
+            context,
+            MaterialPageRoute(builder: (_) => const AddDeviceScreen()),
+          );
+
+          if (newDevice != null) {
+            _addDevice(newDevice);
+          }
+        },
       ),
     );
   }
