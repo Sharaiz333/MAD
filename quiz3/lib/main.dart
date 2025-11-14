@@ -93,7 +93,7 @@ class _FlashcardAppState extends State<FlashcardApp> {
                 onPressed: () {
                   setState(() {
                     card.showAnswer = !card.showAnswer;
-                    // Mark as learned when answer is revealed
+
                     if (card.showAnswer) {
                       card.learned = true;
                     } else {
