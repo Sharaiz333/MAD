@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 import '../widgets/task_tile.dart';
 import '../widgets/add_task_dialog.dart';
 import '../widgets/edit_task_dialog.dart';
+import '../widgets/weather_widget.dart';
 
 class ToDoListPage extends StatefulWidget {
   const ToDoListPage({super.key});
@@ -11,52 +13,70 @@ class ToDoListPage extends StatefulWidget {
   State<ToDoListPage> createState() => _ToDoListPageState();
 }
 
-class _ToDoListPageState extends State<ToDoListPage> {
+class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderStateMixin {
   final titleController = TextEditingController();
   final descController = TextEditingController();
-  final List<Task> tasks = [];
-
   bool showList = true;
   double opacity = 1.0;
+  late TabController tabController;
 
-  void addTask() {
+  @override
+  void initState() {
+    super.initState();
+    tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    tabController.dispose();
+    titleController.dispose();
+    descController.dispose();
+    super.dispose();
+  }
+
+  Future<void> addTask() async {
     if (titleController.text.isNotEmpty) {
-      setState(() {
-        tasks.add(Task(
-          title: titleController.text,
-          description: descController.text,
-        ));
-        titleController.clear();
-        descController.clear();
-        opacity = 0.0;
+      await FirebaseFirestore.instance.collection('tasks').add({
+        'title': titleController.text,
+        'description': descController.text,
+        'isDone': false,
+        'created': FieldValue.serverTimestamp(),
       });
-      Future.delayed(const Duration(milliseconds: 200), () {
-        setState(() => opacity = 1.0);
-      });
+      titleController.clear();
+      descController.clear();
     }
   }
 
-  void editTask(int index, String newTitle, String newDesc) {
-    setState(() {
-      tasks[index].title = newTitle;
-      tasks[index].description = newDesc;
-    });
+  Stream<QuerySnapshot> getTaskStream(int tab) {
+    final ref = FirebaseFirestore.instance.collection('tasks').orderBy('created');
+    switch (tab) {
+      case 1:
+        return ref.where('isDone', isEqualTo: true).snapshots();
+      case 2:
+        return ref.where('isDone', isEqualTo: false).snapshots();
+      default:
+        return ref.snapshots();
+    }
   }
-
-  void toggleDone(int index, bool? value) =>
-      setState(() => tasks[index].isDone = value ?? false);
-
-  void deleteTask(int index) => setState(() => tasks.removeAt(index));
-
-  void toggleView() => setState(() => showList = !showList);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('✨ Animated To-Do List ✨'),
+        title: const Text('✨ Riphahtasker To-Do List ✨'),
         centerTitle: true,
         backgroundColor: Colors.deepPurple[400],
+        bottom: TabBar(
+          controller: tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.list), text: 'All'),
+            Tab(icon: Icon(Icons.done_all), text: 'Completed'),
+            Tab(icon: Icon(Icons.pending), text: 'Pending'),
+          ],
+          indicatorColor: Colors.white,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+        ),
       ),
       body: SafeArea(
         child: Container(
@@ -69,44 +89,112 @@ class _ToDoListPageState extends State<ToDoListPage> {
           ),
           child: Column(
             children: [
-              // --- Task List Section ---
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: WeatherWidget(),
+              ),
               Expanded(
-                child: AnimatedCrossFade(
-                  duration: const Duration(milliseconds: 600),
-                  crossFadeState: showList
-                      ? CrossFadeState.showFirst
-                      : CrossFadeState.showSecond,
-                  firstChild: tasks.isEmpty
-                      ? todo_list_Center()
-                      : ListView.builder(
-                    padding: const EdgeInsets.all(10),
-                    itemCount: tasks.length,
-                    itemBuilder: (context, index) => TaskTile(
-                      task: tasks[index],
-                      opacity: opacity,
-                      onDelete: () => deleteTask(index),
-                      onEdit: (t, d) => editTask(index, t, d),
-                      onToggleDone: (v) => toggleDone(index, v),
-                    ),
-                  ),
-                  secondChild: const Center(
-                    child: Text(
-                      'List Hidden 👀',
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                child: TabBarView(
+                  controller: tabController,
+                  children: List.generate(3, (tab) {
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: getTaskStream(tab),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No tasks yet. Add one!',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                          );
+                        }
+                        final docs = snapshot.data!.docs;
+                        return AnimatedOpacity(
+                          opacity: opacity,
+                          duration: const Duration(milliseconds: 400),
+                          child: showList
+                              ? ListView.builder(
+                            padding: const EdgeInsets.all(10),
+                            itemCount: docs.length,
+                            itemBuilder: (c, i) {
+                              final doc = docs[i];
+                              final data = doc.data() as Map<String, dynamic>;
+                              return TaskTile(
+                                task: Task(
+                                  title: data['title'] ?? '',
+                                  description: data['description'] ?? '',
+                                  isDone: data['isDone'] ?? false,
+                                ),
+                                opacity: opacity,
+                                onDelete: () async => await doc.reference.delete(),
+                                onEdit: (title, desc) async => await doc.reference.update({
+                                  'title': title,
+                                  'description': desc,
+                                }),
+                                onToggleDone: (v) async =>
+                                await doc.reference.update({'isDone': v ?? false}),
+                              );
+                            },
+                          )
+                              : const Center(
+                            child: Text(
+                              'List Hidden 👀',
+                              style: TextStyle(fontSize: 20, color: Colors.white),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }),
                 ),
               ),
-
-              // Footer Section
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16, top: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  FloatingActionButton(
+                    mini: true,
+                    heroTag: 'toggleBtn',
+                    backgroundColor: Colors.deepPurpleAccent,
+                    onPressed: () {
+                      setState(() => opacity = 0.0);
+                      Future.delayed(const Duration(milliseconds: 400), () {
+                        setState(() {
+                          showList = !showList;
+                          opacity = 1.0;
+                        });
+                      });
+                    },
+                    tooltip: showList ? 'Hide task list' : 'Show task list',
+                    child: const Icon(Icons.visibility),
+                  ),
+                  FloatingActionButton(
+                    heroTag: 'addBtn',
+                    backgroundColor: Colors.pinkAccent,
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => AddTaskDialog(
+                        titleController: titleController,
+                        descController: descController,
+                        onAdd: () async {
+                          await addTask();
+                          Navigator.pop(context);
+                        },
+                        backgroundColor: Colors.deepPurple[100] ?? Colors.purple.shade100,
+                      ),
+                    ),
+                    tooltip: 'Add new task',
+                    child: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16, top: 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
+                  children: [
                     Text(
                       'Riphah International University',
                       style: TextStyle(
@@ -140,52 +228,6 @@ class _ToDoListPageState extends State<ToDoListPage> {
           ),
         ),
       ),
-      floatingActionButton: _buildFABs(context),
-    );
-  }
-
-  Center todo_list_Center() {
-    return const Center(
-                  child: Text(
-                    'No tasks yet. Add one!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                    ),
-                  ),
-                );
-  }
-
-  // --- Floating Action Buttons ---
-  Widget _buildFABs(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        FloatingActionButton(
-          heroTag: 'toggle',
-          mini: true,
-          backgroundColor: Colors.deepPurpleAccent,
-          onPressed: toggleView,
-          child: const Icon(Icons.visibility),
-        ),
-        const SizedBox(height: 10),
-        FloatingActionButton(
-          heroTag: 'add',
-          backgroundColor: Colors.pinkAccent,
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => AddTaskDialog(
-              titleController: titleController,
-              descController: descController,
-              onAdd: () {
-                addTask();
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          child: const Icon(Icons.add),
-        ),
-      ],
     );
   }
 }

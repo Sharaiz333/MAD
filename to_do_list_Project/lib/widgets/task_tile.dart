@@ -10,12 +10,12 @@ class TaskTile extends StatefulWidget {
   final Function(bool?) onToggleDone;
 
   const TaskTile({
+    super.key,
     required this.task,
     required this.opacity,
     required this.onDelete,
     required this.onEdit,
     required this.onToggleDone,
-    super.key,
   });
 
   @override
@@ -54,18 +54,13 @@ class _TaskTileState extends State<TaskTile> {
             widget.task.title,
             style: TextStyle(
               color: Colors.white,
-              decoration: widget.task.isDone
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
+              decoration: widget.task.isDone ? TextDecoration.lineThrough : null,
             ),
           ),
-          subtitle: expanded
-              ? Text(
-            widget.task.description.isNotEmpty
-                ? widget.task.description
-                : 'No description added',
-            style: const TextStyle(color: Colors.white70),
-          )
+          subtitle: expanded && widget.task.description.isNotEmpty
+              ? Text(widget.task.description, style: const TextStyle(color: Colors.white70))
+              : expanded
+              ? const Text('No description added', style: TextStyle(color: Colors.white70))
               : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -78,10 +73,7 @@ class _TaskTileState extends State<TaskTile> {
                     builder: (_) => EditTaskDialog(
                       initialTitle: widget.task.title,
                       initialDesc: widget.task.description,
-                      onSave: (t, d) {
-                        widget.onEdit(t, d);
-                        Navigator.pop(context);
-                      },
+                      onSave: (t, d) => widget.onEdit(t, d),
                     ),
                   );
                 },
