@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "527982266770",
+    "project_id": "riphahtasker",
+    "storage_bucket": "riphahtasker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527982266770:android:61c1baec3c6fb74ea0994b",
+        "android_client_info": {
+          "package_name": "Riphah.International.University.to_do_list_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYwSp2CayXOuZDNLePQoTOmghzpl6raoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
