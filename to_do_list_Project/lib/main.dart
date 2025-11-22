@@ -6,9 +6,13 @@ import 'pages/home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyDYwSp2CayXOuZDNLePQoTOmghzpl6raoY" ,
+      appId: "1:527982266770:android:61c1baec3c6fb74ea0994b",
+      messagingSenderId: "527982266770",
+      projectId: "riphahtasker",
+    ),
   );
-  print("Firebase initialized OK");
   runApp(const RiphahtaskerApp());
 }
 

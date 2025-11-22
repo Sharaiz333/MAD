@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'todo_list_page.dart';
+import 'package:to_do_list_project/widgets/weather_widget.dart';  // Import your dynamic WeatherWidget here
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -28,18 +29,18 @@ class HomePage extends StatelessWidget {
           child: SingleChildScrollView(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                SizedBox(height: 48),
-                _CircleLogo(),
-                SizedBox(height: 36),
-                _WelcomeText(),
-                SizedBox(height: 32),
-                _WeatherCard(),
-                SizedBox(height: 38),
-                _MainButton(),
-                SizedBox(height: 44),
-                _Footer(),
-                SizedBox(height: 18),
+              children: [
+                const SizedBox(height: 48),
+                const _CircleLogo(),
+                const SizedBox(height: 36),
+                const _WelcomeText(),
+                const SizedBox(height: 32),
+                WeatherWidget(),  // Replaced static _WeatherCard with dynamic WeatherWidget
+                const SizedBox(height: 38),
+                const _MainButton(),
+                const SizedBox(height: 44),
+                const _Footer(),
+                const SizedBox(height: 18),
               ],
             ),
           ),
@@ -57,7 +58,7 @@ class HomePage extends StatelessWidget {
           DrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFFA06CD5), Color(0xFF667EEA)],
+                colors: const [Color(0xFFA06CD5), Color(0xFF667EEA)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -68,12 +69,17 @@ class HomePage extends StatelessWidget {
                 Image.asset('assets/app_logo.png', height: 60),
                 const SizedBox(height: 12),
                 const Text(
-                    'Riphahtasker',
-                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  'Riphahtasker',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 6),
                 const Text(
-                    'Your daily task companion app',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  'Your daily task companion app',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
               ],
             ),
           ),
@@ -114,8 +120,6 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
-// Helper widgets
 
 class _HeaderTitle extends StatelessWidget {
   @override
