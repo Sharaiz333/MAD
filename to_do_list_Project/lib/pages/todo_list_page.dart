@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
 import '../widgets/task_tile.dart';
 import '../widgets/add_task_dialog.dart';
-import '../widgets/edit_task_dialog.dart';
+import '../services/api_service.dart'; // NEW IMPORT
 import '../widgets/weather_widget.dart';
 
 class ToDoListPage extends StatefulWidget {
@@ -19,45 +18,66 @@ class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderSt
   bool showList = true;
   double opacity = 1.0;
   late TabController tabController;
+  final ApiService apiService = ApiService(); // Initialize API Service
+  Future<List<Task>>? tasksFuture; // Future to hold task data
 
   @override
   void initState() {
     super.initState();
     tabController = TabController(length: 3, vsync: this);
+    tabController.addListener(_loadTasks);
+    _loadTasks();
   }
 
   @override
   void dispose() {
+    tabController.removeListener(_loadTasks);
     tabController.dispose();
     titleController.dispose();
     descController.dispose();
     super.dispose();
   }
 
-  Future<void> addTask() async {
-    if (titleController.text.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('tasks').add({
-        'title': titleController.text,
-        'description': descController.text,
-        'isDone': false,
-        'created': FieldValue.serverTimestamp(),
-      });
-      titleController.clear();
-      descController.clear();
+  String _getFilterString(int tab) {
+    switch (tab) {
+      case 1: return 'completed';
+      case 2: return 'pending';
+      default: return 'all';
     }
   }
 
-  Stream<QuerySnapshot> getTaskStream(int tab) {
-    final ref = FirebaseFirestore.instance.collection('tasks').orderBy('created');
-    switch (tab) {
-      case 1:
-        return ref.where('isDone', isEqualTo: true).snapshots();
-      case 2:
-        return ref.where('isDone', isEqualTo: false).snapshots();
-      default:
-        return ref.snapshots();
+  void _loadTasks() {
+    final filter = _getFilterString(tabController.index);
+    setState(() {
+      tasksFuture = apiService.fetchTasks(filter);
+    });
+  }
+
+  Future<void> addTask() async {
+    if (titleController.text.isNotEmpty) {
+      await apiService.addTask(titleController.text, descController.text);
+      titleController.clear();
+      descController.clear();
+      _loadTasks();
     }
   }
+
+
+  Future<void> _deleteTask(String id) async {
+    await apiService.deleteTask(id);
+    _loadTasks();
+  }
+
+  Future<void> _editTask(String id, String title, String desc) async {
+    await apiService.updateTask(id, {'title': title, 'description': desc});
+    _loadTasks();
+  }
+
+  Future<void> _toggleDone(String id, bool? isDone) async {
+    await apiService.updateTask(id, {'isDone': isDone ?? false});
+    _loadTasks();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -70,8 +90,8 @@ class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderSt
           controller: tabController,
           tabs: const [
             Tab(icon: Icon(Icons.list), text: 'All'),
-            Tab(icon: Icon(Icons.done_all), text: 'Completed'),
-            Tab(icon: Icon(Icons.pending), text: 'Pending'),
+            Tab(icon: Icon(Icons.done_all), text: 'completed'),
+            Tab(icon: Icon(Icons.pending), text: 'pending'),
           ],
           indicatorColor: Colors.white,
           labelColor: Colors.white,
@@ -97,13 +117,28 @@ class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderSt
                 child: TabBarView(
                   controller: tabController,
                   children: List.generate(3, (tab) {
-                    return StreamBuilder<QuerySnapshot>(
-                      stream: getTaskStream(tab),
+                    // Replace StreamBuilder with FutureBuilder
+                    return FutureBuilder<List<Task>>(
+                      key: ValueKey(tab), // Key to re-run future when tab changes
+                      future: tasksFuture,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
+                        if (snapshot.connectionState == ConnectionState.waiting || tasksFuture == null) {
                           return const Center(child: CircularProgressIndicator());
                         }
-                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        if (snapshot.hasError) {
+                          // Display error from the API call
+                          return Center(
+                            child: Text(
+                              'Error: ${snapshot.error}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                            ),
+                          );
+                        }
+
+                        final tasks = snapshot.data ?? [];
+
+                        if (tasks.isEmpty) {
                           return const Center(
                             child: Text(
                               'No tasks yet. Add one!',
@@ -111,31 +146,26 @@ class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderSt
                             ),
                           );
                         }
-                        final docs = snapshot.data!.docs;
+
                         return AnimatedOpacity(
                           opacity: opacity,
                           duration: const Duration(milliseconds: 400),
                           child: showList
                               ? ListView.builder(
                             padding: const EdgeInsets.all(10),
-                            itemCount: docs.length,
+                            itemCount: tasks.length,
                             itemBuilder: (c, i) {
-                              final doc = docs[i];
-                              final data = doc.data() as Map<String, dynamic>;
+                              final task = tasks[i];
+
+                              // Make sure we have an ID before rendering
+                              if (task.id == null) return const SizedBox.shrink();
+
                               return TaskTile(
-                                task: Task(
-                                  title: data['title'] ?? '',
-                                  description: data['description'] ?? '',
-                                  isDone: data['isDone'] ?? false,
-                                ),
+                                task: task,
                                 opacity: opacity,
-                                onDelete: () async => await doc.reference.delete(),
-                                onEdit: (title, desc) async => await doc.reference.update({
-                                  'title': title,
-                                  'description': desc,
-                                }),
-                                onToggleDone: (v) async =>
-                                await doc.reference.update({'isDone': v ?? false}),
+                                onDelete: () async => await _deleteTask(task.id!),
+                                onEdit: (title, desc) async => await _editTask(task.id!, title, desc),
+                                onToggleDone: (v) async => await _toggleDone(task.id!, v),
                               );
                             },
                           )
@@ -152,8 +182,17 @@ class _ToDoListPageState extends State<ToDoListPage> with SingleTickerProviderSt
                 ),
               ),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  FloatingActionButton(
+                    mini: true,
+                    heroTag: 'refreshBtn',
+                    backgroundColor: Colors.blueGrey,
+                    onPressed: _loadTasks,
+                    tooltip: 'Refresh task list',
+                    child: const Icon(Icons.refresh),
+                  ),
+                  const Spacer(),
                   FloatingActionButton(
                     mini: true,
                     heroTag: 'toggleBtn',

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
@@ -11,31 +10,16 @@ class WeatherWidget extends StatefulWidget {
 }
 
 class _WeatherWidgetState extends State<WeatherWidget> {
+  // Base URL for your Node.js backend
+  // Use your actual IP address if testing on a physical device,
+  // or '10.0.2.2' for Android Emulator, or 'localhost' for Web/Desktop/iOS Simulator
+  final String backendBaseUrl = 'http://localhost:3000';
+
   String city = "Islamabad";
   String weather = "";
   String description = "";
   num? temp;
   bool isLoading = true;
-
-  // List of motivational quotes
-  final List<Map<String, String>> fallbackQuotes = [
-    {
-      "body": "Stay positive and keep pushing forward!",
-      "author": "Unknown"
-    },
-    {
-      "body": "Success is not final, failure is not fatal: it is the courage to continue that counts.",
-      "author": "Winston Churchill"
-    },
-    {
-      "body": "Don't watch the clock; do what it does. Keep going.",
-      "author": "Sam Levenson"
-    },
-    {
-      "body": "Opportunities don't happen, you create them.",
-      "author": "Chris Grosser"
-    },
-  ];
 
   String dailyQuote = "";
   String quoteAuthor = "";
@@ -43,75 +27,56 @@ class _WeatherWidgetState extends State<WeatherWidget> {
   @override
   void initState() {
     super.initState();
-    assignRandomFallbackQuote();
-    fetchWeatherAndQuote();
+    // We don't need fallback quotes or a separate assignRandomFallbackQuote()
+    // because the backend provides a default/fallback quote on failure.
+    fetchExternalData();
   }
 
-  void assignRandomFallbackQuote() {
-    final randomIndex = Random().nextInt(fallbackQuotes.length);
-    dailyQuote = fallbackQuotes[randomIndex]["body"]!;
-    quoteAuthor = fallbackQuotes[randomIndex]["author"]!;
-  }
-
-  Future<void> fetchWeatherAndQuote() async {
+  // Rename the function to better reflect what it does now
+  Future<void> fetchExternalData() async {
     setState(() => isLoading = true);
     try {
-      await fetchWeather();
-      await fetchDailyQuote();
+      final url = '$backendBaseUrl/api/external-data?city=$city';
+      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          temp = data['temp'];
+          weather = data['weather'];
+          description = data['description'];
+          dailyQuote = data['dailyQuote'];
+          quoteAuthor = data['quoteAuthor'];
+        });
+      } else {
+        // Handle backend error
+        weather = "Backend Error";
+        description = "Status: ${response.statusCode}";
+      }
+    } catch (e) {
+      // Handle connection error (server not running, network issue, etc.)
+      print("Connection Error: $e");
+      setState(() {
+        weather = "Connection Error";
+        description = "Could not reach backend";
+        dailyQuote = "Please ensure the Node.js server is running.";
+        quoteAuthor = "Server Check";
+      });
     } finally {
       setState(() => isLoading = false);
     }
   }
 
-  Future<void> fetchWeather() async {
-    final apiKey = 'a7128a1e9eb5fef935080a93098612ba';
-    final url =
-        'https://api.openweathermap.org/data/2.5/weather?q=$city&units=metric&appid=$apiKey';
-
-    try {
-      final response =
-      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 7));
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200) {
-        temp = data['main']['temp'];
-        weather = data['weather'][0]['main'];
-        description = data['weather'][0]['description'];
-      } else {
-        weather = "Unavailable";
-        description = data['message'] ?? "";
-      }
-    } catch (_) {
-      weather = "Error";
-      description = "";
-    }
-  }
-
-  Future<void> fetchDailyQuote() async {
-    final url = 'https://favqs.com/api/qotd';
-
-    try {
-      final response =
-      await http.get(Uri.parse(url)).timeout(const Duration(seconds: 7));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final quote = data['quote'];
-        setState(() {
-          dailyQuote = quote['body'] ?? dailyQuote;
-          quoteAuthor = quote['author'] ?? quoteAuthor;
-        });
-      }
-      // If fails, keep fallback quote
-    } catch (_) {
-      // Use fallback quote if API call fails
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // ... (rest of the build method remains the same)
+    // The UI part of WeatherWidget remains unchanged, only the data fetching logic is different.
+
+    // ... (Your original build method here)
+
+    // ... (Original build code below)
     final screenWidth = MediaQuery.of(context).size.width;
     final tileMaxWidth = 440.0; // Compact for desktop/tablet, responsive for mobile
-
     return Center(
       child: Material(
         borderRadius: BorderRadius.circular(20),
@@ -136,10 +101,9 @@ class _WeatherWidgetState extends State<WeatherWidget> {
             ],
           ),
           child: isLoading
-              ? SizedBox(
+              ? const SizedBox(
             height: 75,
-            child:
-            Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: Center(child: CircularProgressIndicator(color: Colors.white)),
           )
               : Row(
             crossAxisAlignment: CrossAxisAlignment.start,
